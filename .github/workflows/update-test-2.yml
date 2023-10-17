@@ -1,0 +1,56 @@
+name: Roll Up Channel Releases
+
+on:
+  push:
+    tags:
+      - 'v*' ## when a semantic version tag is pushed
+
+permissions: write-all
+
+
+jobs:
+  roll:
+    name: Bump channel tags
+
+    runs-on: ubuntu-latest
+    steps:
+      # - uses: GitHubSecurityLab/actions-permissions/monitor@v1
+
+      - name: Roll Releases
+        uses: actions/github-script@v6
+        with:
+          script: |
+            console.log("Getting current rapid/stable commits...")
+            let rapid = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/rapid"
+            })
+            console.log("Current rapid commit: " + rapid.data.object.sha)
+
+
+            let stable = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/stable"
+            })
+
+            console.log("Current stable commit: " + stable.data.object.sha)
+
+            console.log("Promoting current rapid commit to stable...")
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/stable",
+              sha: rapid.data.object.sha,
+              force: true
+            })
+
+            console.log("Promoting current semver commit to rapid...")
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/rapid",
+              sha: context.sha,
+              force: true
+            })
