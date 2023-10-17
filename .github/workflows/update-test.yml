@@ -1,0 +1,49 @@
+on:
+  workflow_dispatch:
+  release:
+    types: 
+      - created
+name: Pt. 2 - Roll Up Chan Rel
+jobs:
+  roll_up:
+    permissions:
+      contents: write # This is required to update tags/refs
+    name: Bump channel tags
+    runs-on: ubuntu-latest
+    steps:
+      - name: Roll Releases
+        uses: actions/github-script@v6
+        with:
+          script: |
+            console.log("Getting current rapid/stable commits...")
+            let rapid = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/rapid"
+            })
+            let stable = await github.rest.git.getRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/stable"
+            })
+            
+            console.log("Current rapid commit: " + rapid.data.object.sha)
+            console.log("Current stable commit: " + stable.data.object.sha)
+
+            console.log("Promoting current rapid commit to stable...")
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/stable",
+              sha: rapid.data.object.sha,
+              force: true
+            })
+
+            console.log("Promoting current semver commit to rapid...")
+            await github.rest.git.updateRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "tags/rapid",
+              sha: context.sha,
+              force: true
+            })
